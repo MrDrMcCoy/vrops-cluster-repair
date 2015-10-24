@@ -1,5 +1,5 @@
 #!/bin/bash
-#Version 0.6.5
+#Version 0.6.6
 trap exit SIGINT SIGKILL SIGTERM
 log=vrops-cluster-repair.log
 read -p "This script will reset your vROps cluster to a known good state. 
@@ -79,23 +79,30 @@ for h in $stop_order; do
 		ssh -q root@$h "find \$STORAGE_DB_VCOPS/blob/migrationUpgrade/ -type f -size +31M -exec zip -2q \$STORAGE/db/xdb-migrationupgrade-{}-`date +%F_%I.%M.%S_%p_%Z`.zip {} \; -exec truncate -cs 0 {} \;"
 done
 
-echo -e "\nYou should see some messages about services refusing to start due to the cluster state being offline. This is expected.\n"
+echo -e "\nBringing cluster back online. You will see some messages about services refusing to start due to the cluster state being offline. This is expected.\n"
 for h in $node_list; do
 	echo -e "\n==========| Restarting services on $h |=========="
 		ssh -q root@$h "service vmware-casa start"
 		ssh -q root@$h "service vmware-vcops start"
 		ssh -q root@$h "service vmware-vcops-web start"
 done
-
 for h in $node_list; do
 	echo -e "\n==========| Bringing node $h online |=========="
 	ssh -q root@$h "\$VMWARE_PYTHON_BIN \$VCOPS_BASE/../vmware-vcopssuite/utilities/sliceConfiguration/bin/vcopsConfigureRoles.py --action bringSliceOnline"
 done 
 
-echo -e "\n==========| Getting time of each node |=========="
+echo -e "\n==========| Getting date/time of each node |=========="
 for h in $node_list; do
-	echo "Date/time on $h is `ssh -q root@$h date`"
+	echo "Date/time on $h is `ssh -q root@$h date`" &
 done 
+wait
 echo -e "\nIf any of the above times are more than 10 seconds out of sync, that can cause issues in the cluster services. Ensure they are using proper host or NTP time sync or set their clocks manually.\n"
+
+echo -e "\n==========| Getting latency of each node |=========="
+for h in $node_list; do
+	echo "Average round trip latency to $h is `ping -c 10 -i 0.2 -W 5 $h | grep rtt | cut -f5 -d '/'` miliseconds" &
+done 
+wait
+echo -e "\nIf any of the above times are greater than 1 milisecond (except for remote collectors), it can cause database communication issues. Ensure that your nodes are on the same physical LAN and that no other networking issues are in play. Non-remote-collector nodes cannot be separated by a WAN.\n"
 
 echo -e "\n==========| Finished repair script at `date` |==========\n" | tee -a $log
