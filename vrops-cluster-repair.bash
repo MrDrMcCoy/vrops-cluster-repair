@@ -1,5 +1,5 @@
 #!/bin/bash
-#Version 0.6.6
+#Version 0.6.7
 trap exit SIGINT SIGKILL SIGTERM
 log=vrops-cluster-repair.log
 read -p "This script will reset your vROps cluster to a known good state. 
@@ -46,12 +46,12 @@ read -p "Clear out alarms and alerts from database? (optional, requires cluster 
 if [[ "$yn" =~ y|yes|1 ]]; then 
 		echo "This will produce errors on remote collectors, please ignore them."
 	for h in $node_list; do 
-		echo -e "\nBacking up alerts and alarms database..."
+		echo -e "\nBacking up alerts and alarms database on $h..."
 			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/pg_dumpall | gzip -9 > \$STORAGE/db/vcops/vpostgres/pg_dumpall-`date +%F_%I.%M.%S_%p_%Z`.gz"
 		echo -e "\nTruncating alerts and alarms on $h..."
 			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/psql vcopsdb -c 'truncate alarm cascade;'"
 			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/psql vcopsdb -c 'truncate alert cascade;'"
-done
+	done
 fi
 
 echo -e "\nWe will now perform the cluster repair. You may see some messages about services not stopping properly. This is expected.\n"
@@ -63,6 +63,7 @@ for h in $stop_order; do
 	echo "Stopping services..."
 		ssh -q root@$h "service vmware-vcops-web stop"
 		ssh -q root@$h "service vmware-vcops stop"
+		ssh -q root@$h "service vmware-vcops-watchdog stop"
 		ssh -q root@$h "service vmware-casa stop"
 	echo "Altering cluster state..."
 		ssh -q root@$h "sed -ri.bak 's/sliceonline = \w+/sliceonline = false/g;s/failuredetected = \w+/failuredetected = false/g;s/offlinereason = \w+/offlinereason = /g' \$VCOPS_BASE/../vmware-vcopssuite/utilities/sliceConfiguration/data/roleState.properties"
@@ -83,6 +84,7 @@ echo -e "\nBringing cluster back online. You will see some messages about servic
 for h in $node_list; do
 	echo -e "\n==========| Restarting services on $h |=========="
 		ssh -q root@$h "service vmware-casa start"
+		ssh -q root@$h "service vmware-vcops-watchdog start"
 		ssh -q root@$h "service vmware-vcops start"
 		ssh -q root@$h "service vmware-vcops-web start"
 done
