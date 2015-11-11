@@ -25,5 +25,6 @@ A script that helps return the cluster to a healthy state.
 * Connect to the master node via your preferred SSH client (such as Putty or MobaXterm).
 * Execute the script by typing `bash vrops-cluster-repair.bash` and follow the prompts.
   * If it does not detect all the nodes in your cluster, you should edit the file with `vim` and add them manually. There are comments in the file to guide you.
+  * If it throws syntax errors, your system likely converted the file to use Windows line endings. If this is the case, you should delete and re-create the script on your vROps node with `vim`, pasting the content of the script into the terminal from a text editor that is more advanced than Notepad (such as Sublime Text or Notepad++).
 
 Please submit ideas for improving this script under Issues.
