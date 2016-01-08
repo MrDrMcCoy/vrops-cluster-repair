@@ -1,5 +1,5 @@
 # vROps Cluster Repair
-A script that helps return the cluster to a healthy state.
+A script that helps return the vRealize Operations cluster to a healthy state.
 
 ## Things it does:
 
@@ -26,7 +26,7 @@ A script that helps return the cluster to a healthy state.
 
 - Enable SSH on all your nodes.
   - Open a VM console session to the node.
-  - Press ALT+F1 to get to a console session.
+  - Press ALT+F1 to get to a login prompt.
   - Log in as root.
     - If you have never logged in to the console before, the password is blank, and it will prompt you to change it.
   - Start the SSH service with `service sshd start`.
