@@ -31,9 +31,11 @@ Please verify that this is a complete list of all your nodes:
 [ $node_list ]
 
 If not, you may enter a space-separated list of IPs/FQDNs at the prompt, or edit
-this script to ensure that all cluster members are manually added. You may also
-leave the prompt blank and press enter if the above list is correct, or press 
-CTRL+C to exit.
+this script to ensure that all cluster members are added properly. Please use 
+the order: Master, Master Replica, Data, Remote Collector.
+
+You may also leave the prompt blank and press enter if the above list is
+correct, or press CTRL+C to exit.
 #####
 \$ "
 
