@@ -144,7 +144,7 @@ if running this script without does not restore all functionality as desired.
 
 read -p "
 #####
-Would you like to archive inatalled PAK files? They are left behind by
+Would you like to archive installed PAK files? They are left behind by
 upgrades, patches, and add-ons. They can interfere with future upgrades and
 cluster expansions. This is safe and recommended, with the caveat that the 
 cluster status page will no longer show any management packs as installed,
