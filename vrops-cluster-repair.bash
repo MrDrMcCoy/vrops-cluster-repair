@@ -1,12 +1,13 @@
 #!/bin/bash
-#Version 0.6.8
+#Version 0.6.9
 log="/tmp/vrops-cluster-repair.log"
 trap "(echo -ne '\n==========| Exiting per user signal at ' ; date | tr -d '\n' ; echo ' |==========') | tee -a $log; exit" SIGINT SIGKILL SIGTERM
 rundate="`date +%F_%I.%M.%S_%p_%Z`"
 echo -e "\n==========| Starting repair script at $rundate |==========\n" >> $log
 detected_nodes="`grep -oP '"ip_address":"[^"]+"' $STORAGE/db/casa/webapp/hsqldb/casa.db.script | cut -d '"' -f4 | tr '\n' ' '`"
-if [ "$detected_nodes" = "" ]; then detected_nodes="localhost" ; fi 2>&1 | tee -a $log
-
+if [ "$detected_nodes" = "" ]; then 
+	node_list="localhost"
+else
 #########
 # You may enter a space-separated list of FQDNs or IPs for each node in the 
 # cluster. Do this in place of $detected_nodes between the quotes below.
@@ -14,6 +15,7 @@ if [ "$detected_nodes" = "" ]; then detected_nodes="localhost" ; fi 2>&1 | tee -
 # Master, Master Replica, Data, Remote Collector
 node_list="$detected_nodes"
 #########
+fi
 
 read -p "
 #####
@@ -22,7 +24,7 @@ It is not supported by VMware, and you should take a snapshot before running
 it. Please note that SSH must be enabled on _ALL_ nodes for this to work, which
 is not the default. Press enter to continue or CTRL+C to exit. 
 #####
-\$ "
+\$ " nothing
 
 read -p "
 #####
@@ -37,7 +39,7 @@ the order: Master, Master Replica, Data, Remote Collector.
 You may also leave the prompt blank and press enter if the above list is
 correct, or press CTRL+C to exit.
 #####
-\$ "
+\$ " override
 
 if [ "$override" != "" ]; then
 	node_list=$override
@@ -49,7 +51,7 @@ The node list is now changed to the following:
 
 Press enter to continue or CTRL+C to exit
 #####
-\$ "
+\$ " nothing
 fi
 
 stop_order="`echo "$node_list" | tr ' ' '\n' | tac | tr '\n' ' '`"
@@ -91,7 +93,7 @@ issues with the cluster services. Please ensure that they are obtaining a good
 timestamp either from the host (via Tools) or from NTP as per the documentation.
 Press enter to continue.
 #####
-\$ "
+\$ " nothing
 
 echo -e "\n==========| Getting latency between nodes |==========" 2>&1 | tee -a $log
 for h in $node_list; do
@@ -105,7 +107,7 @@ Core nodes (Master, Master Replica, Data) should not have a latency higher than
 miliseconds. It's recommended that core nodes be kept on the same physical LAN.
 Press enter to continue.
 #####
-\$ "
+\$ " nothing
 
 read -p "
 #####
@@ -120,10 +122,10 @@ if [[ "$yn" =~ y|yes|1 ]]; then
 		echo "This will produce errors on remote collectors, please ignore them."
 	for h in $node_list; do 
 		echo -e "\nBacking up alerts and alarms database on $h..."
-			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/pg_dumpall | gzip -9 > \$STORAGE/db/vcops/vpostgres/pg_dumpall-$rundate.gz"
+			ssh -q root@$h "cd \$VMWARE_VPOSTGRES_ROOT ; sudo -u postgres \$VMWARE_VPOSTGRES_ROOT/bin/pg_dump vcopsdb -Z 9 -f \$STORAGE_DB_VCOPS/vpostgres/vcopsdb-$rundate.bak.gz"
 		echo -e "\nTruncating alerts and alarms on $h..."
-			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/psql vcopsdb -c 'truncate alarm cascade;'"
-			ssh -q root@$h "sudo -u postgres /opt/vmware/vpostgres/current/bin/psql vcopsdb -c 'truncate alert cascade;'"
+			ssh -q root@$h "cd \$VMWARE_VPOSTGRES_ROOT ; sudo -u postgres \$VMWARE_VPOSTGRES_ROOT/bin/psql vcopsdb -c 'truncate alarm cascade;'"
+			ssh -q root@$h "cd \$VMWARE_VPOSTGRES_ROOT ; sudo -u postgres \$VMWARE_VPOSTGRES_ROOT/bin/psql vcopsdb -c 'truncate alert cascade;'"
 	done
 fi 2>&1 | tee -a $log
 
@@ -144,7 +146,7 @@ if running this script without does not restore all functionality as desired.
 
 read -p "
 #####
-Would you like to archive installed PAK files? They are left behind by
+Would you like to archive inatalled PAK files? They are left behind by
 upgrades, patches, and add-ons. They can interfere with future upgrades and
 cluster expansions. This is safe and recommended, with the caveat that the 
 cluster status page will no longer show any management packs as installed,
@@ -159,34 +161,34 @@ We will now perform the cluster repair. You may see some messages about services
 not stopping properly. This is safe to ignore. Press enter to continue or
 CTRL-C to exit.
 #####
-\$ "
+\$ " nothing
 
 for h in $stop_order; do
 	echo -e "\n==========| Performing actions on $h |=========="
-	echo "Taking node offline..."
+	echo -e "\nTaking node offline..."
 		ssh -q root@$h "\$VMWARE_PYTHON_BIN \$VCOPS_BASE/../vmware-vcopssuite/utilities/sliceConfiguration/bin/vcopsConfigureRoles.py --action bringSliceOffline --offlineReason \"repairing\""
-	echo "Stopping services..."
+	echo -e "\nStopping services..."
 		ssh -q root@$h "service vmware-vcops-web stop"
 		ssh -q root@$h "service vmware-vcops stop"
 		ssh -q root@$h "service vmware-vcops-watchdog stop"
 		ssh -q root@$h "service vmware-casa stop"
-	echo "Altering cluster state..."
+	echo -e "\nAltering cluster state..."
 		ssh -q root@$h "perl -pi_$rundate.bak -e 's/sliceonline = .+/sliceonline = false/g;s/failuredetected = .+/failuredetected = false/g;s/offlinereason = .+/offlinereason = /g' \$VCOPS_BASE/../vmware-vcopssuite/utilities/sliceConfiguration/data/roleState.properties"
 		ssh -q root@$h "perl -pi_$rundate.bak -e 's/\"onlineState\":\"[^\"]+\"/\"onlineState\":\"OFFLINE\"/g;s/\"ha_transition_state\":\"[^\"]+\"/\"ha_transition_state\":\"NONE\"/g;s/\"initialization_state\":\"[^\"]+\"/\"initialization_state\":\"NONE\"/g;s/\"online_state\":\"[^\"]+\"/\"online_state\":\"OFFLINE\"/g;s/\"online_state_reason\":\"[^\"]+\"/\"online_state_reason\":\"\"/g' \$STORAGE/db/casa/webapp/hsqldb/casa.db.script"
-	echo "Backing up and removing old upgrade state file..."
+	echo -e "\nBacking up and removing old upgrade state file..."
 		ssh -q root@$h "zip -2mq vcops_upgrade_state-$rundate.zip \$STORAGE/log/var/log/vmware/vcops/vcops_upgrade_state.json"
-	echo "Backing up and truncating migration blobs that break upgrades..."
+	echo -e "\nBacking up and truncating migration blobs that break upgrades..."
 		ssh -q root@$h "find \$STORAGE_DB_VCOPS/blob/migrationUpgrade/ -type f -size +31M -exec zip -2q \$STORAGE/db/xdb-migrationupgrade-{}-$rundate.zip {} \; -exec truncate -cs 0 {} \;"
 	if [[ ! "$pak" =~ n|no ]]; then
-	echo "Backing up and removing old upgrade pak files..."
-		ssh -q root@$h "find \$STORAGE/db/casa/pak/dist_pak_files/ \( -type f -o -type l \) -exec zip -0myq \$STORAGE/db/casa/pak/dist_pak_files_backup_$rundate.zip {} \;"
+		echo -e "\nBacking up and removing old upgrade pak files..."
+			ssh -q root@$h "find \$STORAGE/db/casa/pak/dist_pak_files/ \( -type f -o -type l \) -exec zip -0myq \$STORAGE/db/casa/pak/dist_pak_files_backup_$rundate.zip {} \;"
 	fi
 	if [[ "$activities" =~ y|yes ]]; then
-		echo "Backing up and removing activities..."
+		echo -e "\nBacking up and removing activities..."
 			ssh -q root@$h "zip -r2mq \$STORAGE/db/vcops/activity-backup-$rundate.zip \$STORAGE/db/vcops/activity/*" 
 	fi
 	if [[ "$ipv6" =~ y|yes ]]; then
-		echo "Disabling IPv6..."
+		echo -e "\nDisabling IPv6..."
 			ssh -q root@$h "echo -e 'alias net-pf-10 off\nalias ipv6 off' >> /etc/modprobe.conf.local ; echo -e 'net.ipv6.conf.all.disable_ipv6 = 1\nnet.ipv6.conf.default.disable_ipv6 = 1\nnet.ipv6.conf.lo.disable_ipv6 = 1' >>/etc/sysctl.conf ; sysctl -p > /dev/null"
 	fi		
 done 2>&1 | tee -a $log
