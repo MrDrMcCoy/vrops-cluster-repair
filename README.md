@@ -31,9 +31,9 @@ A script that helps return the vRealize Operations cluster to a healthy state.
     - If you have never logged in to the console before, the password is blank, and it will prompt you to change it.
   - Start the SSH service with `service sshd start`.
     - To make this change permanent, you can also type `chkconfig sshd on`.
-- Transfer the script to the Master Node via your preferred SCP/SFTP client (such as WinSCP, Filezilla, etc)
-  - A good place to put the file is /tmp/
-  - You can also paste the text of the script into a new file using SSH and `vim`.
+- Transfer the script to the Master Node via your preferred SCP/SFTP client (such as WinSCP, Filezilla, etc.)
+  - A good place to put the file is `/tmp/`
+  - You can also paste [the text of the script](https://raw.githubusercontent.com/nakedhitman/vrops-cluster-repair/master/vrops-cluster-repair.bash) into a new file using SSH and [`vim`](http://linuxconfig.org/vim-tutorial).
 - Connect to the master node via your preferred SSH client (such as Putty or MobaXterm).
 - Execute the script by typing `bash vrops-cluster-repair.bash`.
 - Follow the prompts. The script is interactive and imbued with magic beard powers, let it be your guide.
