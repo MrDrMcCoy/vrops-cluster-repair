@@ -174,7 +174,7 @@ for h in $stop_order; do
 		ssh -q root@$h "service vmware-casa stop"
 	echo -e "\nAltering cluster state..."
 		ssh -q root@$h "perl -pi_$rundate.bak -e 's/sliceonline = .+/sliceonline = false/g;s/failuredetected = .+/failuredetected = false/g;s/offlinereason = .+/offlinereason = /g' \$VCOPS_BASE/../vmware-vcopssuite/utilities/sliceConfiguration/data/roleState.properties"
-		ssh -q root@$h "perl -pi_$rundate.bak -e 's/\"onlineState\":\"[^\"]+\"/\"onlineState\":\"OFFLINE\"/g;s/\"ha_transition_state\":\"[^\"]+\"/\"ha_transition_state\":\"NONE\"/g;s/\"initialization_state\":\"[^\"]+\"/\"initialization_state\":\"NONE\"/g;s/\"online_state\":\"[^\"]+\"/\"online_state\":\"OFFLINE\"/g;s/\"online_state_reason\":\"[^\"]+\"/\"online_state_reason\":\"\"/g' \$STORAGE/db/casa/webapp/hsqldb/casa.db.script"
+		ssh -q root@$h "perl -pi_$rundate.bak -e 's/\"onlineState\":\"[^\"]+\"/\"onlineState\":\"OFFLINE\"/g;s/\"online_state\":\"[^\"]+\"/\"online_state\":\"OFFLINE\"/g;s/\"ha_transition_state\":\"[^\"]+\"/\"ha_transition_state\":\"NONE\"/g;s/\"initialization_state\":\"[^\"]+\"/\"initialization_state\":\"NONE\"/g;s/\"online_state_reason\":\"[^\"]+\"/\"online_state_reason\":\"\"/g' \$STORAGE/db/casa/webapp/hsqldb/casa.db.script"
 	echo -e "\nBacking up and removing old upgrade state file..."
 		ssh -q root@$h "zip -2mq vcops_upgrade_state-$rundate.zip \$STORAGE/log/var/log/vmware/vcops/vcops_upgrade_state.json"
 	echo -e "\nBacking up and truncating migration blobs that break upgrades..."
